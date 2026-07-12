@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBC Claims Register — Verification & Tracking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#16232E">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="xlsx.full.min.js"></script>
+<style>
+:root{
+  --paper:#F5F6F4; --panel:#FFFFFF; --ink:#16232E; --muted:#5B6873;
+  --line:#D8DDE2; --line-soft:#E7EAEC;
+  --seal:#8A2A2B; --seal-dark:#6E1F20; --seal-tint:#F6ECEC;
+  --ok:#1F7A4D; --ok-tint:#E8F3ED;
+  --warn:#9A6B12; --warn-tint:#F8F0DE;
+  --bad:#A63232; --bad-tint:#F7E9E9;
+  --info:#2E5E8C; --info-tint:#E9F0F6;
+  --grey:#5B6873; --grey-tint:#EDF0F2;
+  --radius:6px;
+  --shadow:0 1px 2px rgba(22,35,46,.06), 0 4px 14px rgba(22,35,46,.05);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{font-size:15px}
+body{background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; line-height:1.5; padding-bottom:64px}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif; font-weight:600; letter-spacing:.005em}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+button{font-family:inherit; cursor:pointer}
+input,select,textarea{font-family:inherit; font-size:.94rem; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:8px 10px; width:100%}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--seal); outline-offset:1px}
+label{font-size:.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em}
+
+/* ---------- header ---------- */
+.masthead{background:var(--ink); color:#F2EFE9; padding:0 28px; border-bottom:4px solid var(--seal)}
+.masthead-inner{max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:18px 0}
+.brand h1{font-size:1.5rem; color:#F2EFE9}
+.brand .sub{font-size:.78rem; color:#AEB9C2; letter-spacing:.08em; text-transform:uppercase; margin-top:2px}
+.proc-toggle{display:flex; border:1px solid #3A4B5A; border-radius:var(--radius); overflow:hidden}
+.proc-toggle button{background:transparent; color:#AEB9C2; border:none; padding:9px 20px; font-size:.88rem; font-weight:600; letter-spacing:.02em}
+.proc-toggle button.active{background:var(--seal); color:#fff}
+.install{background:transparent; color:#F2EFE9; border:1px solid #3A4B5A; border-radius:var(--radius); padding:8px 16px; font-size:.86rem; font-weight:600}
+.install:hover{border-color:#F2EFE9}
+
+/* ---------- case bar ---------- */
+.wrap{max-width:1280px; margin:0 auto; padding:0 28px}
+.casebar{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-top:20px; padding:16px 20px; display:grid; grid-template-columns:2fr 1fr 1.4fr; gap:20px; align-items:end}
+.casebar .deadline{font-size:.86rem; color:var(--muted)}
+.casebar .deadline strong{color:var(--ink)}
+.casebar .deadline .mono{font-size:.86rem}
+.pill{display:inline-block; padding:2px 9px; border-radius:99px; font-size:.75rem; font-weight:600}
+.pill.open{background:var(--ok-tint); color:var(--ok)}
+.pill.closed{background:var(--bad-tint); color:var(--bad)}
+
+/* ---------- stats ---------- */
+.stats{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-top:16px}
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow)}
+.stat .k{font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:600}
+.stat .v{font-family:'Fraunces',serif; font-size:1.55rem; font-weight:600; margin-top:2px}
+.stat .s{font-size:.76rem; color:var(--muted); margin-top:2px}
+.stat.amt .v{font-size:1.15rem; font-family:'IBM Plex Mono',monospace; font-weight:500; margin-top:8px}
+
+/* ---------- controls / tabs ---------- */
+.controls{display:flex; gap:10px; align-items:center; margin-top:22px; flex-wrap:wrap}
+.controls input[type=search]{max-width:260px}
+.controls select{width:auto}
+.spacer{flex:1}
+.btn{border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:var(--radius); padding:9px 16px; font-size:.9rem; font-weight:600}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--seal); border-color:var(--seal); color:#fff}
+.btn.primary:hover{background:var(--seal-dark)}
+.btn.small{padding:4px 10px; font-size:.8rem}
+.btn.danger{color:var(--bad)}
+.tabs{display:flex; gap:2px; margin-top:20px; border-bottom:2px solid var(--line)}
+.tabs button{background:transparent; border:none; padding:10px 18px; font-size:.92rem; font-weight:600; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px}
+.tabs button.active{color:var(--seal); border-bottom-color:var(--seal)}
+
+/* ---------- table ---------- */
+.tablewrap{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-top:14px; overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:.88rem; min-width:960px}
+th{font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); text-align:left; padding:11px 12px; border-bottom:2px solid var(--line); white-space:nowrap; background:#FAFBFA}
+td{padding:11px 12px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.row:hover td{background:#FBF9F6}
+td.num,th.num{text-align:right; font-family:'IBM Plex Mono',monospace; white-space:nowrap}
+.cred-name{font-weight:600}
+.cred-sub{font-size:.78rem; color:var(--muted); margin-top:1px}
+.badge{display:inline-block; padding:2px 9px; border-radius:99px; font-size:.75rem; font-weight:600; white-space:nowrap}
+.b-received{background:var(--grey-tint); color:var(--grey)}
+.b-verify{background:var(--info-tint); color:var(--info)}
+.b-admitted{background:var(--ok-tint); color:var(--ok)}
+.b-partial{background:var(--warn-tint); color:var(--warn)}
+.b-rejected{background:var(--bad-tint); color:var(--bad)}
+.sec-chip{display:inline-block; background:var(--seal-tint); color:var(--seal-dark); border:1px solid #E3CBCB; border-radius:4px; padding:1px 7px; font-size:.72rem; font-weight:600; margin:1px 3px 1px 0}
+.unsec{font-size:.78rem; color:var(--muted)}
+.empty{padding:44px; text-align:center; color:var(--muted)}
+.empty h3{color:var(--ink); margin-bottom:6px}
+
+/* ---------- waterfall ---------- */
+.wf{margin-top:14px}
+.wf-note{font-size:.85rem; color:var(--muted); margin:6px 2px 14px}
+.tier{background:var(--panel); border:1px solid var(--line); border-left:5px solid var(--seal); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px 18px; margin-bottom:10px}
+.tier-head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap}
+.tier-head h3{font-size:1.02rem}
+.tier-head .rank{font-family:'IBM Plex Mono',monospace; font-size:.75rem; color:var(--seal); font-weight:600; letter-spacing:.05em; display:block; margin-bottom:2px}
+.tier-amt{font-family:'IBM Plex Mono',monospace; font-size:.9rem; white-space:nowrap}
+.tier-amt span{color:var(--muted); font-size:.76rem}
+.tier ul{list-style:none; margin-top:8px; border-top:1px dashed var(--line); padding-top:8px}
+.tier li{display:flex; justify-content:space-between; gap:12px; font-size:.85rem; padding:3px 0}
+.tier li .mono{color:var(--muted)}
+.tier .none{font-size:.82rem; color:var(--muted); font-style:italic; margin-top:8px}
+
+/* ---------- class summary ---------- */
+.classgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:14px}
+.classcard{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px 16px}
+.classcard h3{font-size:.98rem; margin-bottom:6px}
+.classcard .row2{display:flex; justify-content:space-between; font-size:.84rem; padding:2px 0; color:var(--muted)}
+.classcard .row2 b{color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:500}
+
+/* ---------- modal ---------- */
+.overlay{position:fixed; inset:0; background:rgba(22,35,46,.45); display:none; align-items:flex-start; justify-content:center; padding:32px 16px; overflow-y:auto; z-index:50}
+.overlay.show{display:flex}
+.modal{background:#fff; border-radius:8px; width:100%; max-width:760px; box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-head{padding:18px 24px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center}
+.modal-head h2{font-size:1.25rem}
+.modal-body{padding:20px 24px}
+.modal-foot{padding:16px 24px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px}
+.field{margin-bottom:14px}
+fieldset.security{border:1px solid var(--line); border-left:4px solid var(--seal); border-radius:var(--radius); padding:14px 16px; margin:6px 0 14px; background:#FBFAF8}
+fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-size:.95rem; padding:0 6px}
+.checks{display:grid; grid-template-columns:repeat(3,1fr); gap:6px 14px; margin-top:4px}
+.checks label{display:flex; align-items:center; gap:7px; font-size:.87rem; font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink); margin:0; cursor:pointer}
+.checks input{width:auto}
+.switch{display:flex; align-items:center; gap:8px; font-size:.92rem; font-weight:600; cursor:pointer; margin:4px 0 10px}
+.switch input{width:auto; accent-color:var(--seal)}
+.hint{font-size:.78rem; color:var(--muted); margin-top:3px; text-transform:none; letter-spacing:0; font-weight:400}
+.x{background:none; border:none; font-size:1.4rem; color:var(--muted); line-height:1}
+.hidden{display:none !important}
+
+@media (max-width:980px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .casebar{grid-template-columns:1fr}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .checks{grid-template-columns:1fr 1fr}
+}
+@media (max-width:600px){ .stats{grid-template-columns:repeat(2,1fr)} .masthead-inner{padding:14px 0} html{font-size:14px}}
+@media (prefers-reduced-motion:no-preference){ .modal{animation:pop .18s ease-out} @keyframes pop{from{transform:translateY(10px); opacity:0}} }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="brand">
+      <h1>Claims Register</h1>
+      <div class="sub">Verification &amp; tracking · Insolvency and Bankruptcy Code, 2016</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+      <button id="installBtn" class="install hidden" onclick="installApp()">⤓ Install app</button>
+      <div class="proc-toggle" role="tablist" aria-label="Process type">
+        <button id="btnCIRP" onclick="setProcess('CIRP')">CIRP</button>
+        <button id="btnLIQ" onclick="setProcess('LIQ')">Liquidation</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="casebar">
+    <div>
+      <label for="cdName">Corporate debtor</label>
+      <input id="cdName" value="Suryadeep Textiles Private Limited" onchange="render()">
+    </div>
+    <div>
+      <label for="icd" id="icdLabel">Insolvency commencement date</label>
+      <input type="date" id="icd" value="2026-05-04" onchange="render()">
+    </div>
+    <div class="deadline" id="deadlineBox"></div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search creditor…" oninput="renderTable()">
+    <select id="fStatus" onchange="renderTable()">
+      <option value="">All statuses</option>
+      <option>Received</option><option>Under Verification</option>
+      <option>Admitted</option><option>Partially Admitted</option><option>Rejected</option>
+    </select>
+    <select id="fCat" onchange="renderTable()"></select>
+    <select id="fSec" onchange="renderTable()">
+      <option value="">Secured &amp; unsecured</option>
+      <option value="sec">Secured only</option>
+      <option value="unsec">Unsecured only</option>
+    </select>
+    <div class="spacer"></div>
+    <button class="btn danger" onclick="resetCase()">Reset case</button>
+    <button class="btn" onclick="exportExcel()">Export to Excel</button>
+    <button class="btn primary" onclick="openModal()">+ Add claim</button>
+  </div>
+
+  <div class="tabs">
+    <button id="tabReg" class="active" onclick="setTab('reg')">Claim register</button>
+    <button id="tabAlt" onclick="setTab('alt')">Class summary</button>
+  </div>
+
+  <div id="viewReg" class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Creditor / stakeholder</th>
+          <th>Category · Form</th>
+          <th>Security offered by CD</th>
+          <th class="num">Claimed (₹)</th>
+          <th class="num">Admitted (₹)</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="emptyReg" class="empty hidden">
+      <h3>No claims match</h3>
+      <p>Adjust the filters, or add a claim to the register.</p>
+      <p style="margin-top:10px"><button class="btn small" onclick="loadSample()">Load sample data</button></p>
+    </div>
+  </div>
+
+  <div id="viewAlt" class="hidden"></div>
+
+</div>
+
+<!-- ---------- modal ---------- -->
+<div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <h2 id="modalTitle">Add claim</h2>
+      <button class="x" onclick="closeModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label for="mName">Creditor / stakeholder name *</label><input id="mName"></div>
+        <div class="field"><label for="mCat">Category *</label><select id="mCat" onchange="suggestForm()"></select></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label for="mForm">Claim form</label><select id="mForm"></select><div class="hint" id="formHint"></div></div>
+        <div class="field"><label for="mDate">Date of receipt</label><input type="date" id="mDate"></div>
+        <div class="field"><label for="mStatus">Verification status</label>
+          <select id="mStatus">
+            <option>Received</option><option>Under Verification</option>
+            <option>Admitted</option><option>Partially Admitted</option><option>Rejected</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="mClaimed">Amount claimed (₹) *</label><input type="number" min="0" id="mClaimed"></div>
+        <div class="field"><label for="mAdmitted">Amount admitted (₹)</label><input type="number" min="0" id="mAdmitted"><div class="hint">Leave blank until verified.</div></div>
+      </div>
+
+      <label class="switch"><input type="checkbox" id="mSecured" onchange="toggleSecurity()"> Claim is backed by security offered by the corporate debtor</label>
+
+      <fieldset class="security hidden" id="secBox">
+        <legend>Security interest</legend>
+        <div class="field">
+          <label>Nature of security</label>
+          <div class="checks" id="secTypes"></div>
+        </div>
+        <div class="field">
+          <label for="mAsset">Asset(s) of the corporate debtor covered</label>
+          <textarea id="mAsset" rows="2" placeholder="e.g. Factory land &amp; building at Plot 12, MIDC Bhosari, Pune; entire current assets (stock &amp; book debts)"></textarea>
+        </div>
+        <div class="grid3">
+          <div class="field"><label for="mChargeId">Charge registration (CERSAI / RoC ID)</label><input id="mChargeId" placeholder="e.g. RoC Charge ID 100456789"></div>
+          <div class="field"><label for="mChargeDate">Date of creation</label><input type="date" id="mChargeDate"></div>
+          <div class="field"><label for="mRank">Ranking</label>
+            <select id="mRank"><option>First charge</option><option>Second charge</option><option>Pari passu</option><option>Exclusive</option></select>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field" id="s52Field"><label for="mS52">Section 52 election (liquidation)</label>
+            <select id="mS52">
+              <option value="">— Not yet elected —</option>
+              <option value="relinquish">Relinquished to liquidation estate</option>
+              <option value="realise">Realising security outside (s. 52)</option>
+            </select>
+            <div class="hint">Proof of security per Reg. 21 — IU records, CERSAI or RoC charge registry.</div>
+          </div>
+          <div class="field"><label for="mSecVal">Indicative value, if noted (₹, optional)</label><input type="number" min="0" id="mSecVal"></div>
+        </div>
+      </fieldset>
+
+      <div class="field"><label for="mRemarks">Remarks / basis of verification</label>
+        <textarea id="mRemarks" rows="2" placeholder="e.g. Verified against IU record and sanction letter; interest recomputed as per facility agreement"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="saveClaim()">Save claim</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= state ================= */
+let process_ = 'CIRP';
+let tab = 'reg';
+let editId = null;
+let nextId = 100;
+
+const SEC_TYPES = ['Mortgage','Hypothecation','Pledge','Lien','Fixed charge','Floating charge','Corporate guarantee','Personal guarantee','Escrow / DSRA','Negative lien','Other'];
+
+const CATS = [
+  'Financial Creditor — Secured',
+  'Financial Creditor — Unsecured',
+  'Operational Creditor',
+  'Workmen',
+  'Employees',
+  'Government dues',
+  'Preference shareholder',
+  'Equity shareholder / partner',
+  'Other stakeholder'
+];
+
+function formsFor(cat){
+  // CIRP Regulations 2016 / Liquidation Process Regulations 2016 claim forms
+  const cirp = {
+    'Operational Creditor':['Form B'],
+    'Government dues':['Form B'],
+    'Financial Creditor — Secured':['Form C','Form CA (class)'],
+    'Financial Creditor — Unsecured':['Form C','Form CA (class)'],
+    'Workmen':['Form D','Form E (auth. rep.)'],
+    'Employees':['Form D','Form E (auth. rep.)'],
+    'Preference shareholder':['Form F'],
+    'Equity shareholder / partner':['Form F'],
+    'Other stakeholder':['Form F']
+  };
+  const liq = {
+    'Operational Creditor':['Form B'],
+    'Government dues':['Form B'],
+    'Financial Creditor — Secured':['Form C'],
+    'Financial Creditor — Unsecured':['Form C'],
+    'Workmen':['Form D','Form E (auth. rep.)'],
+    'Employees':['Form D','Form E (auth. rep.)'],
+    'Preference shareholder':['Form F'],
+    'Equity shareholder / partner':['Form F'],
+    'Other stakeholder':['Form F']
+  };
+  return (process_==='CIRP'? cirp: liq)[cat] || ['Form F'];
+}
+
+/* sample data — replace with your own */
+let claims = [
+  {id:1, name:'State Bank of India', cat:'Financial Creditor — Secured', form:'Form C', date:'2026-05-12',
+   claimed:184500000, admitted:182300000, status:'Admitted', secured:true,
+   secTypes:['Mortgage','Hypothecation'], asset:'Equitable mortgage over factory land & building, Plot 12, MIDC Bhosari, Pune; first charge by hypothecation over entire current assets',
+   chargeId:'RoC Charge ID 100482731', chargeDate:'2019-08-14', rank:'First charge', s52:'relinquish', secVal:'',
+   remarks:'Verified against IU record (NeSL) and sanction letter dated 02.08.2019; penal interest post-ICD excluded.'},
+  {id:2, name:'Canara Bank', cat:'Financial Creditor — Secured', form:'Form C', date:'2026-05-15',
+   claimed:96200000, admitted:96200000, status:'Admitted', secured:true,
+   secTypes:['Hypothecation','Corporate guarantee'], asset:'Second charge on current assets; hypothecation of plant & machinery (Unit II); corporate guarantee of Suryadeep Yarns Ltd.',
+   chargeId:'CERSAI Asset ID 4002-1187-3345', chargeDate:'2021-01-22', rank:'Second charge', s52:'', secVal:'',
+   remarks:'Claim verified with statement of account and CERSAI search report.'},
+  {id:3, name:'Meridian Asset Reconstruction Co. Ltd.', cat:'Financial Creditor — Unsecured', form:'Form C', date:'2026-05-20',
+   claimed:41800000, admitted:'', status:'Under Verification', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:'Assignment deed from original lender awaited; verification of assignment in progress.'},
+  {id:4, name:'Poornima Cotton Traders', cat:'Operational Creditor', form:'Form B', date:'2026-05-18',
+   claimed:7350000, admitted:6900000, status:'Partially Admitted', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:'₹4.5 lakh disallowed — debit notes not supported by delivery challans.'},
+  {id:5, name:'Vikram Logistics LLP', cat:'Operational Creditor', form:'Form B', date:'2026-06-02',
+   claimed:2140000, admitted:'', status:'Received', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:''},
+  {id:6, name:'Workmen of Unit I (through authorised representative)', cat:'Workmen', form:'Form E (auth. rep.)', date:'2026-05-25',
+   claimed:12600000, admitted:12600000, status:'Admitted', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:'Verified with muster rolls and payroll register; dues for 22 months.'},
+  {id:7, name:'Employees (staff & supervisors)', cat:'Employees', form:'Form D', date:'2026-05-27',
+   claimed:5400000, admitted:'', status:'Under Verification', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:'Reconciling with full & final settlement records.'},
+  {id:8, name:'Central Goods & Services Tax, Pune-II', cat:'Government dues', form:'Form B', date:'2026-06-05',
+   claimed:9800000, admitted:'', status:'Under Verification', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:'DRC-07 orders under reconciliation with returns filed.'},
+  {id:9, name:'Trident Dyes & Chemicals Pvt. Ltd.', cat:'Operational Creditor', form:'Form B', date:'2026-06-20',
+   claimed:3900000, admitted:0, status:'Rejected', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
+   remarks:'Claim pertains to a different entity (Suryadeep Yarns Ltd.); no privity with CD.'}
+];
+
+/* ================= persistence =================
+   Saved in this browser/device only. Guarded so the app
+   still runs in environments where storage is unavailable
+   (e.g. an online preview) — it just won't remember. */
+const STORE_KEY = 'ibc-claims-register-v1';
+const SAMPLE = JSON.parse(JSON.stringify(claims));
+
+function persist(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      process_, claims, nextId,
+      cd: $('cdName').value, icd: $('icd').value
+    }));
+  }catch(e){ /* storage unavailable — continue without saving */ }
+}
+
+function restore(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return false;
+    const s = JSON.parse(raw);
+    if(!Array.isArray(s.claims)) return false;
+    claims = s.claims;
+    nextId = s.nextId || 100;
+    process_ = s.process_ === 'LIQ' ? 'LIQ' : 'CIRP';
+    if(s.cd != null) $('cdName').value = s.cd;
+    if(s.icd != null) $('icd').value = s.icd;
+    return true;
+  }catch(e){ return false; }
+}
+
+function resetCase(){
+  if(!confirm('Reset this case? The corporate debtor details and the entire claim register will be cleared. Export to Excel first if you need a copy.')) return;
+  claims = [];
+  nextId = 100;
+  $('cdName').value = '';
+  $('icd').value = '';
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  render();
+}
+
+function loadSample(){
+  claims = JSON.parse(JSON.stringify(SAMPLE));
+  nextId = 100;
+  render();
+}
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const inr = n => (n===''||n==null||isNaN(n)) ? '—' : Number(n).toLocaleString('en-IN');
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function windowDays(){ return process_==='CIRP' ? 90 : 30; }
+
+function deadlineInfo(){
+  const icd = $('icd').value;
+  if(!icd) return '<span class="pill closed">Set commencement date</span>';
+  const start = new Date(icd+'T00:00:00');
+  const due = new Date(start); due.setDate(due.getDate()+windowDays());
+  const today = new Date(); today.setHours(0,0,0,0);
+  const elapsed = Math.floor((today-start)/86400000);
+  const left = Math.floor((due-today)/86400000);
+  const reg = process_==='CIRP' ? 'Reg. 12, CIRP Regulations — claims within 90 days of ICD'
+                                : 'Reg. 16, Liquidation Regulations — claims within 30 days of LCD';
+  const open = left>=0;
+  return `<div><strong>Claim submission window</strong> · ${reg}<br>
+    Last date: <span class="mono">${due.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>
+    &nbsp;<span class="pill ${open?'open':'closed'}">${open? left+' days left' : 'Window closed ('+Math.abs(left)+' days ago)'}</span><br>
+    <span>Day ${elapsed>=0?elapsed:0} of the process</span></div>`;
+}
+
+/* ================= rendering ================= */
+function setProcess(p){
+  process_ = p;
+  $('btnCIRP').classList.toggle('active', p==='CIRP');
+  $('btnLIQ').classList.toggle('active', p==='LIQ');
+  $('icdLabel').textContent = p==='CIRP' ? 'Insolvency commencement date' : 'Liquidation commencement date';
+  $('tabAlt').textContent = p==='CIRP' ? 'Class summary' : 'Section 53 waterfall';
+  $('s52Field').classList.toggle('hidden', p==='CIRP');
+  render();
+}
+
+function setTab(t){
+  tab=t;
+  $('tabReg').classList.toggle('active', t==='reg');
+  $('tabAlt').classList.toggle('active', t==='alt');
+  $('viewReg').classList.toggle('hidden', t!=='reg');
+  $('viewAlt').classList.toggle('hidden', t!=='alt');
+  const showRegCtrls = t==='reg';
+  ['q','fStatus','fCat','fSec'].forEach(id=>$(id).classList.toggle('hidden', !showRegCtrls));
+  render();
+}
+
+function render(){
+  $('deadlineBox').innerHTML = deadlineInfo();
+  renderStats();
+  renderTable();
+  renderAlt();
+  persist();
+}
+
+function renderStats(){
+  const n = s => claims.filter(c=>c.status===s).length;
+  const claimed = claims.reduce((a,c)=>a+Number(c.claimed||0),0);
+  const admitted = claims.reduce((a,c)=>a+Number(c.admitted||0),0);
+  const secured = claims.filter(c=>c.secured).length;
+  $('stats').innerHTML = `
+    <div class="stat"><div class="k">Claims received</div><div class="v">${claims.length}</div><div class="s">${secured} secured</div></div>
+    <div class="stat"><div class="k">Under verification</div><div class="v">${n('Under Verification')+n('Received')}</div><div class="s">${n('Received')} not yet taken up</div></div>
+    <div class="stat"><div class="k">Admitted</div><div class="v">${n('Admitted')+n('Partially Admitted')}</div><div class="s">${n('Partially Admitted')} in part</div></div>
+    <div class="stat"><div class="k">Rejected</div><div class="v">${n('Rejected')}</div><div class="s">with reasons recorded</div></div>
+    <div class="stat amt"><div class="k">Total claimed</div><div class="v">₹ ${inr(claimed)}</div></div>
+    <div class="stat amt"><div class="k">Total admitted</div><div class="v">₹ ${inr(admitted)}</div></div>`;
+}
+
+function catFilterOptions(){
+  const cur = $('fCat').value;
+  $('fCat').innerHTML = '<option value="">All categories</option>' + CATS.map(c=>`<option>${c}</option>`).join('');
+  $('fCat').value = cur;
+}
+
+function filtered(){
+  const q = $('q').value.trim().toLowerCase();
+  const st = $('fStatus').value, cat = $('fCat').value, sec = $('fSec').value;
+  return claims.filter(c=>
+    (!q || c.name.toLowerCase().includes(q)) &&
+    (!st || c.status===st) &&
+    (!cat || c.cat===cat) &&
+    (!sec || (sec==='sec'? c.secured : !c.secured))
+  );
+}
+
+function badge(st){
+  const m = {'Received':'b-received','Under Verification':'b-verify','Admitted':'b-admitted','Partially Admitted':'b-partial','Rejected':'b-rejected'};
+  return `<span class="badge ${m[st]}">${st}</span>`;
+}
+
+function securityCell(c){
+  if(!c.secured) return '<span class="unsec">Unsecured</span>';
+  let h = c.secTypes.map(t=>`<span class="sec-chip">${esc(t)}</span>`).join('');
+  const bits = [];
+  if(c.asset) bits.push(esc(c.asset));
+  if(c.rank) bits.push(esc(c.rank));
+  if(c.chargeId) bits.push(esc(c.chargeId));
+  if(process_==='LIQ' && c.s52) bits.push(c.s52==='relinquish' ? 'Relinquished to estate (s. 53)' : 'Realising outside (s. 52)');
+  if(bits.length) h += `<div class="cred-sub">${bits.join(' · ')}</div>`;
+  return h || '<span class="unsec">Secured (details pending)</span>';
+}
+
+function renderTable(){
+  const rows = filtered();
+  $('emptyReg').classList.toggle('hidden', rows.length>0);
+  $('tbody').innerHTML = rows.map(c=>`
+    <tr class="row">
+      <td><div class="cred-name">${esc(c.name)}</div><div class="cred-sub">Received ${c.date? new Date(c.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—'}${c.remarks? ' · '+esc(c.remarks):''}</div></td>
+      <td>${esc(c.cat)}<div class="cred-sub">${esc(c.form)}</div></td>
+      <td>${securityCell(c)}</td>
+      <td class="num">${inr(c.claimed)}</td>
+      <td class="num">${inr(c.admitted)}</td>
+      <td>${badge(c.status)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn small" onclick="openModal(${c.id})">Edit</button>
+        <button class="btn small danger" onclick="delClaim(${c.id})">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+/* ---------- alt view: class summary (CIRP) / waterfall (LIQ) ---------- */
+function renderAlt(){
+  if(tab!=='alt') return;
+  $('viewAlt').innerHTML = process_==='CIRP' ? classSummaryHTML() : waterfallHTML();
+}
+
+function classSummaryHTML(){
+  const groups = {};
+  claims.forEach(c=>{ (groups[c.cat]=groups[c.cat]||[]).push(c); });
+  const cards = Object.keys(groups).map(cat=>{
+    const g = groups[cat];
+    const claimed = g.reduce((a,c)=>a+Number(c.claimed||0),0);
+    const admitted = g.reduce((a,c)=>a+Number(c.admitted||0),0);
+    const adm = g.filter(c=>c.status==='Admitted'||c.status==='Partially Admitted').length;
+    return `<div class="classcard"><h3>${esc(cat)}</h3>
+      <div class="row2"><span>Claims</span><b>${g.length}</b></div>
+      <div class="row2"><span>Admitted / partly</span><b>${adm}</b></div>
+      <div class="row2"><span>Claimed</span><b>₹ ${inr(claimed)}</b></div>
+      <div class="row2"><span>Admitted amt.</span><b>₹ ${inr(admitted)}</b></div>
+    </div>`;
+  }).join('');
+  return `<p class="wf-note">Class-wise position of the claim register — useful while constituting the CoC and computing voting shares.</p><div class="classgrid">${cards||'<p class="wf-note">No claims yet.</p>'}</div>`;
+}
+
+function tierOf(c){
+  // Section 53(1) mapping, by admitted category
+  if(c.cat==='Workmen') return 2;
+  if(c.secured && c.s52==='relinquish') return 2;
+  if(c.cat==='Employees') return 3;
+  if(c.cat==='Financial Creditor — Unsecured') return 4;
+  if(c.cat==='Government dues') return 5;
+  if(c.secured && c.s52==='realise') return 5; // unpaid balance after enforcement
+  if(c.cat==='Preference shareholder') return 7;
+  if(c.cat==='Equity shareholder / partner') return 8;
+  if(c.cat==='Financial Creditor — Secured') return 2; // default: treat as relinquished pending election
+  return 6; // operational & remaining debts
+}
+
+function waterfallHTML(){
+  const TIERS = [
+    {n:1, t:'Insolvency resolution & liquidation costs', d:'Paid in full in priority — fees, process costs (s. 53(1)(a)).'},
+    {n:2, t:'Workmen\u2019s dues (24 months) & secured creditors who relinquished security', d:'Rank equally between and among themselves (s. 53(1)(b)).'},
+    {n:3, t:'Wages & unpaid dues of employees (12 months)', d:'s. 53(1)(c)'},
+    {n:4, t:'Financial debts owed to unsecured creditors', d:'s. 53(1)(d)'},
+    {n:5, t:'Government dues (2 years) & unpaid secured creditors after s. 52 enforcement', d:'Rank equally (s. 53(1)(e)).'},
+    {n:6, t:'Any remaining debts and dues', d:'Includes operational creditors (s. 53(1)(f)).'},
+    {n:7, t:'Preference shareholders', d:'s. 53(1)(g)'},
+    {n:8, t:'Equity shareholders or partners', d:'s. 53(1)(h)'}
+  ];
+  const html = TIERS.map((T,i)=>{
+    const g = claims.filter(c=>tierOf(c)===T.n && c.status!=='Rejected');
+    const admitted = g.reduce((a,c)=>a+Number(c.admitted||0),0);
+    const claimed = g.reduce((a,c)=>a+Number(c.claimed||0),0);
+    const items = g.map(c=>`<li><span>${esc(c.name)} <span class="cred-sub" style="display:inline">${c.secured&&!c.s52?'(s. 52 election pending)':''}</span></span><span class="mono">₹ ${inr(c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)}</span></li>`).join('');
+    const body = T.n===1
+      ? '<div class="none">Process costs are tracked outside the claim register.</div>'
+      : (items? `<ul>${items}</ul>` : '<div class="none">No admitted claims in this tier.</div>');
+    return `<div class="tier" style="margin-left:${Math.min(i*22,154)}px">
+      <div class="tier-head">
+        <h3><span class="rank">PRIORITY ${T.n}</span>${T.t}</h3>
+        <div class="tier-amt">₹ ${inr(admitted)} <span>admitted · ₹ ${inr(claimed)} claimed</span></div>
+      </div>
+      <div class="cred-sub">${T.d}</div>${body}</div>`;
+  }).join('');
+  return `<div class="wf"><p class="wf-note">Distribution priority under Section 53 of the Code. Rejected claims are excluded; secured creditors default to Priority 2 until a Section 52 election is recorded on the claim.</p>${html}</div>`;
+}
+
+/* ================= modal ================= */
+function fillSelect(id, arr, val){
+  $(id).innerHTML = arr.map(x=>`<option>${x}</option>`).join('');
+  if(val) $(id).value = val;
+}
+
+function suggestForm(){
+  const forms = formsFor($('mCat').value);
+  fillSelect('mForm', forms);
+  $('formHint').textContent = (process_==='CIRP'?'CIRP Regulations, Schedule':'Liquidation Regulations, Schedule II') + ' — suggested for this category.';
+}
+
+function toggleSecurity(){
+  $('secBox').classList.toggle('hidden', !$('mSecured').checked);
+}
+
+function openModal(id){
+  editId = id ?? null;
+  $('modalTitle').textContent = editId? 'Edit claim' : 'Add claim';
+  fillSelect('mCat', CATS);
+  $('secTypes').innerHTML = SEC_TYPES.map(t=>`<label><input type="checkbox" value="${t}"> ${t}</label>`).join('');
+  const c = editId ? claims.find(x=>x.id===editId) : null;
+  $('mName').value = c?.name||'';
+  $('mCat').value = c?.cat||CATS[0];
+  suggestForm();
+  if(c?.form) { if(![...$('mForm').options].some(o=>o.value===c.form)) $('mForm').add(new Option(c.form)); $('mForm').value=c.form; }
+  $('mDate').value = c?.date||'';
+  $('mStatus').value = c?.status||'Received';
+  $('mClaimed').value = c?.claimed??'';
+  $('mAdmitted').value = c?.admitted??'';
+  $('mSecured').checked = !!c?.secured;
+  toggleSecurity();
+  [...$('secTypes').querySelectorAll('input')].forEach(cb=> cb.checked = !!c?.secTypes?.includes(cb.value));
+  $('mAsset').value = c?.asset||'';
+  $('mChargeId').value = c?.chargeId||'';
+  $('mChargeDate').value = c?.chargeDate||'';
+  $('mRank').value = c?.rank||'First charge';
+  $('mS52').value = c?.s52||'';
+  $('mSecVal').value = c?.secVal??'';
+  $('mRemarks').value = c?.remarks||'';
+  $('s52Field').classList.toggle('hidden', process_==='CIRP');
+  $('overlay').classList.add('show');
+  $('mName').focus();
+}
+
+function closeModal(){ $('overlay').classList.remove('show'); }
+
+function saveClaim(){
+  const name = $('mName').value.trim();
+  const claimed = $('mClaimed').value;
+  if(!name){ alert('Enter the creditor / stakeholder name.'); return; }
+  if(claimed==='' || Number(claimed)<0){ alert('Enter the amount claimed.'); return; }
+  const rec = {
+    id: editId ?? nextId++,
+    name, cat: $('mCat').value, form: $('mForm').value, date: $('mDate').value,
+    status: $('mStatus').value,
+    claimed: Number(claimed),
+    admitted: $('mAdmitted').value==='' ? '' : Number($('mAdmitted').value),
+    secured: $('mSecured').checked,
+    secTypes: [...$('secTypes').querySelectorAll('input:checked')].map(cb=>cb.value),
+    asset: $('mAsset').value.trim(),
+    chargeId: $('mChargeId').value.trim(),
+    chargeDate: $('mChargeDate').value,
+    rank: $('mSecured').checked ? $('mRank').value : '',
+    s52: $('mSecured').checked ? $('mS52').value : '',
+    secVal: $('mSecVal').value,
+    remarks: $('mRemarks').value.trim()
+  };
+  if(editId){ claims = claims.map(c=>c.id===editId? rec: c); } else { claims.push(rec); }
+  closeModal(); render();
+}
+
+function delClaim(id){
+  const c = claims.find(x=>x.id===id);
+  if(confirm(`Delete the claim of ${c.name}? This cannot be undone.`)){
+    claims = claims.filter(x=>x.id!==id); render();
+  }
+}
+
+/* ================= export (Excel) ================= */
+function s52Label(v){ return v==='relinquish' ? 'Relinquished to estate' : v==='realise' ? 'Realising outside (s. 52)' : ''; }
+function numOr(v){ return (v===''||v==null||isNaN(v)) ? '' : Number(v); }
+
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){
+    alert('The Excel library could not be loaded. Please check your internet connection and try again.');
+    return;
+  }
+  const cd = $('cdName').value || 'Corporate Debtor';
+  const procName = process_==='CIRP' ? 'Corporate Insolvency Resolution Process (CIRP)' : 'Liquidation Process';
+  const icd = $('icd').value || '';
+  const wb = XLSX.utils.book_new();
+
+  /* ---- Sheet 1: Claim Register ---- */
+  const head = ['Sl. No.','Creditor / Stakeholder','Category','Claim Form','Date of Receipt','Verification Status',
+    'Amount Claimed (INR)','Amount Admitted (INR)','Secured (Y/N)','Nature of Security',
+    'Assets of CD Covered','Charge Registration (CERSAI / RoC)','Date of Charge Creation','Ranking',
+    'Section 52 Election','Remarks / Basis of Verification'];
+  const regRows = claims.map((c,i)=>[
+    i+1, c.name, c.cat, c.form, c.date, c.status,
+    numOr(c.claimed), numOr(c.admitted), c.secured?'Yes':'No', (c.secTypes||[]).join('; '),
+    c.asset, c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.remarks
+  ]);
+  const regAoa = [
+    [cd],
+    [procName + (icd? ' — Commencement date: '+icd : '')],
+    ['Claim register as on ' + new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})],
+    [],
+    head, ...regRows
+  ];
+  const wsReg = XLSX.utils.aoa_to_sheet(regAoa);
+  wsReg['!cols'] = [{wch:7},{wch:38},{wch:28},{wch:16},{wch:14},{wch:18},{wch:18},{wch:18},{wch:11},{wch:30},{wch:48},{wch:28},{wch:16},{wch:14},{wch:24},{wch:55}];
+  wsReg['!freeze'] = {xSplit:0, ySplit:5};
+  XLSX.utils.book_append_sheet(wb, wsReg, 'Claim Register');
+
+  /* ---- Sheet 2: Summary ---- */
+  const n = s => claims.filter(c=>c.status===s).length;
+  const claimed = claims.reduce((a,c)=>a+Number(c.claimed||0),0);
+  const admitted = claims.reduce((a,c)=>a+Number(c.admitted||0),0);
+  const groups = {};
+  claims.forEach(c=>{ (groups[c.cat]=groups[c.cat]||[]).push(c); });
+  const classRows = Object.keys(groups).map(cat=>{
+    const g = groups[cat];
+    return [cat, g.length,
+      g.filter(c=>c.status==='Admitted'||c.status==='Partially Admitted').length,
+      g.reduce((a,c)=>a+Number(c.claimed||0),0),
+      g.reduce((a,c)=>a+Number(c.admitted||0),0)];
+  });
+  const sumAoa = [
+    [cd],[procName],['Commencement date', icd],[],
+    ['Position of claims'],
+    ['Claims received', claims.length],
+    ['Received (not yet taken up)', n('Received')],
+    ['Under verification', n('Under Verification')],
+    ['Admitted', n('Admitted')],
+    ['Partially admitted', n('Partially Admitted')],
+    ['Rejected', n('Rejected')],
+    ['Total amount claimed (INR)', claimed],
+    ['Total amount admitted (INR)', admitted],
+    [],
+    ['Class-wise position'],
+    ['Category','Claims','Admitted / Partly','Claimed (INR)','Admitted (INR)'],
+    ...classRows
+  ];
+  const wsSum = XLSX.utils.aoa_to_sheet(sumAoa);
+  wsSum['!cols'] = [{wch:38},{wch:14},{wch:18},{wch:18},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsSum, 'Summary');
+
+  /* ---- Sheet 3: Security Interests ---- */
+  const secured = claims.filter(c=>c.secured);
+  if(secured.length){
+    const secAoa = [
+      [cd + ' — Security interests offered by the corporate debtor'],[],
+      ['Sl. No.','Secured Creditor','Nature of Security','Assets of CD Covered','Charge Registration','Date of Creation','Ranking','Section 52 Election','Claim Status'],
+      ...secured.map((c,i)=>[i+1, c.name, (c.secTypes||[]).join('; '), c.asset, c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.status])
+    ];
+    const wsSec = XLSX.utils.aoa_to_sheet(secAoa);
+    wsSec['!cols'] = [{wch:7},{wch:38},{wch:32},{wch:52},{wch:28},{wch:16},{wch:14},{wch:24},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, wsSec, 'Security Interests');
+  }
+
+  /* ---- Sheet 4: Section 53 Waterfall (liquidation only) ---- */
+  if(process_==='LIQ'){
+    const TIER_NAMES = {
+      1:'Insolvency resolution & liquidation costs — s. 53(1)(a)',
+      2:'Workmen\u2019s dues (24 months) & secured creditors relinquishing security — s. 53(1)(b)',
+      3:'Wages & unpaid dues of employees (12 months) — s. 53(1)(c)',
+      4:'Financial debts owed to unsecured creditors — s. 53(1)(d)',
+      5:'Government dues (2 years) & unpaid secured creditors after s. 52 — s. 53(1)(e)',
+      6:'Any remaining debts and dues (incl. operational creditors) — s. 53(1)(f)',
+      7:'Preference shareholders — s. 53(1)(g)',
+      8:'Equity shareholders or partners — s. 53(1)(h)'
+    };
+    const wfAoa = [[cd + ' — Distribution priority under Section 53'],
+      ['Note: rejected claims excluded; secured creditors default to Priority 2 until a Section 52 election is recorded.'],[],
+      ['Priority','Tier','Creditor / Stakeholder','Amount for Distribution (INR)']];
+    for(let t=1;t<=8;t++){
+      const g = claims.filter(c=>tierOf(c)===t && c.status!=='Rejected');
+      if(t===1){ wfAoa.push([1, TIER_NAMES[1], 'Process costs — tracked outside the claim register', '']); continue; }
+      if(!g.length){ wfAoa.push([t, TIER_NAMES[t], '— none —', '']); continue; }
+      g.forEach(c=> wfAoa.push([t, TIER_NAMES[t], c.name, numOr(c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)]));
+      wfAoa.push(['', '', 'Tier total', g.reduce((a,c)=>a+Number((c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)||0),0)]);
+    }
+    const wsWf = XLSX.utils.aoa_to_sheet(wfAoa);
+    wsWf['!cols'] = [{wch:9},{wch:70},{wch:44},{wch:26}];
+    XLSX.utils.book_append_sheet(wb, wsWf, 'Section 53 Waterfall');
+  }
+
+  XLSX.writeFile(wb, cd.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_') + '_Claim_Register.xlsx');
+}
+
+/* ================= PWA: install prompt & offline ================= */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  $('installBtn').classList.remove('hidden');
+});
+async function installApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $('installBtn').classList.add('hidden');
+}
+window.addEventListener('appinstalled', ()=> $('installBtn').classList.add('hidden'));
+
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
+/* ================= init ================= */
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+catFilterOptions();
+restore();
+setProcess(process_);
+setTab('reg');
+</script>
+</body>
+</html>
