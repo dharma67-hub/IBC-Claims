@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Install Check — IBC Claims Register</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#16232E">
+<style>
+:root{--paper:#F5F6F4;--ink:#16232E;--muted:#5B6873;--line:#D8DDE2;--seal:#8A2A2B;
+--ok:#1F7A4D;--ok-t:#E8F3ED;--bad:#A63232;--bad-t:#F7E9E9;--warn:#9A6B12;--warn-t:#F8F0DE;--info:#2E5E8C;--info-t:#E9F0F6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.55;padding:24px 16px 64px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-family:Georgia,serif;font-size:1.6rem;border-bottom:4px solid var(--seal);padding-bottom:10px;margin-bottom:6px}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:20px}
+.check{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.mark{font-weight:700;font-size:.8rem;padding:3px 10px;border-radius:99px;white-space:nowrap;margin-top:1px}
+.PASS{background:var(--ok-t);color:var(--ok)} .FAIL{background:var(--bad-t);color:var(--bad)}
+.WARN{background:var(--warn-t);color:var(--warn)} .INFO{background:var(--info-t);color:var(--info)}
+.check h3{font-size:1rem;margin-bottom:2px}
+.check p{font-size:.9rem;color:var(--muted)}
+.check p b{color:var(--ink)}
+.check code{background:#EFF1F0;padding:1px 5px;border-radius:4px;font-size:.85rem;word-break:break-all}
+#installBtn{display:none;background:var(--seal);color:#fff;border:none;border-radius:6px;padding:12px 22px;font-size:1rem;font-weight:600;cursor:pointer;margin:14px 0}
+.verdict{border-left:5px solid var(--seal);background:#fff;border:1px solid var(--line);border-left-width:5px;border-left-color:var(--seal);border-radius:6px;padding:16px 18px;margin:18px 0;font-size:.95rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Install Check</h1>
+  <p class="sub">Upload this file to the <b>same repository folder as <code>index.html</code></b>, then open it at
+  <code>https://&lt;username&gt;.github.io/&lt;repo&gt;/install-check.html</code>. It tests every requirement for the install option.</p>
+
+  <button id="installBtn">⤓ Install the app now</button>
+  <div id="results"></div>
+  <div class="verdict" id="verdict">Running checks…</div>
+</div>
+
+<script>
+const results = document.getElementById('results');
+const verdict = document.getElementById('verdict');
+let fails = [], warns = [];
+
+function add(status, title, detail){
+  if(status==='FAIL') fails.push(title);
+  if(status==='WARN') warns.push(title);
+  const div = document.createElement('div');
+  div.className = 'check';
+  div.innerHTML = '<span class="mark '+status+'">'+status+'</span><div><h3>'+title+'</h3><p>'+detail+'</p></div>';
+  results.appendChild(div);
+}
+
+function browserInfo(){
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  const isFirefox = /Firefox\//.test(ua);
+  const isSafari = /Safari\//.test(ua) && !/Chrom(e|ium)|Edg\//.test(ua);
+  const isChromium = /Chrom(e|ium)\/|Edg\//.test(ua);
+  return {isIOS, isFirefox, isSafari, isChromium};
+}
+
+async function run(){
+  /* 1 — protocol */
+  if(location.protocol==='file:'){
+    add('FAIL','You opened the file from your computer',
+      'The address bar starts with <code>file://</code>. Browsers never allow installation from a local file. Open the <b>github.io link</b> instead.');
+  } else if(location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname)){
+    add('PASS','Served over HTTPS','Address: <code>'+location.href+'</code>');
+  } else {
+    add('FAIL','Not served over HTTPS','PWAs require <code>https://</code>. GitHub Pages provides this automatically — check your URL.');
+  }
+
+  /* 2 — browser */
+  const b = browserInfo();
+  if(b.isIOS){
+    add('WARN','iPhone / iPad detected',
+      'iOS never shows install buttons for any web app. Instead: <b>Safari → Share (□↑) → Add to Home Screen</b>. That installs it. Everything below still verifies your setup.');
+  } else if(b.isFirefox){
+    add('FAIL','Firefox detected','Desktop Firefox does not support installing web apps. Open this page in <b>Chrome or Edge</b>.');
+  } else if(b.isSafari){
+    add('WARN','Safari (Mac) detected','Safari on Mac: use <b>File → Add to Dock</b> (Safari 17+), or open the link in Chrome/Edge for the install button.');
+  } else if(b.isChromium){
+    add('PASS','Chrome/Edge detected','This browser supports the install button.');
+  } else {
+    add('WARN','Unrecognised browser','If no install option appears, try Chrome or Edge.');
+  }
+
+  /* 3 — already installed? */
+  if(window.matchMedia('(display-mode: standalone)').matches){
+    add('INFO','Already running as an installed app','That is why no install button appears — it is already installed.');
+  }
+
+  /* 4 — manifest present next to this page */
+  try{
+    const r = await fetch('manifest.webmanifest', {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const m = await r.json();
+    add('PASS','Manifest found','<code>'+new URL('manifest.webmanifest', location.href).href+'</code> — app name: <b>'+(m.short_name||m.name||'?')+'</b>');
+    /* icons reachable? */
+    const icons = (m.icons||[]);
+    if(!icons.length){
+      add('FAIL','No icons listed in manifest','The manifest must list at least a 192px and 512px icon.');
+    } else {
+      let bad = [];
+      for(const ic of icons){
+        try{ const ri = await fetch(ic.src, {cache:'no-store'}); if(!ri.ok) bad.push(ic.src+' (HTTP '+ri.status+')'); }
+        catch(e){ bad.push(ic.src); }
+      }
+      if(bad.length) add('FAIL','Icon file(s) missing','Could not load: <code>'+bad.join('</code>, <code>')+'</code>. Make sure the <b>icons</b> folder was uploaded and sits next to <code>index.html</code>.');
+      else add('PASS','App icons load correctly', icons.length+' icon entrie(s) verified.');
+    }
+  }catch(e){
+    add('FAIL','Manifest NOT found next to this page',
+      '<code>manifest.webmanifest</code> could not be loaded ('+e.message+'). This is the most common cause: the app files are probably inside a <b>subfolder</b> (e.g. <code>pwa/</code>) or were not all uploaded. Every file — <code>index.html</code>, <code>sw.js</code>, <code>manifest.webmanifest</code>, <code>xlsx.full.min.js</code>, the <code>icons</code> folder and this check page — must sit together in the same folder.');
+  }
+
+  /* 5 — service worker file + registration */
+  if(!('serviceWorker' in navigator)){
+    add('FAIL','Service workers unsupported','This browser/context cannot register a service worker, so the app cannot be installable here.');
+  } else {
+    try{
+      const r = await fetch('sw.js', {cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      add('PASS','sw.js found','The offline service worker file is present.');
+      try{
+        const reg = await navigator.serviceWorker.register('sw.js');
+        await navigator.serviceWorker.ready;
+        add('PASS','Service worker registered','Scope: <code>'+reg.scope+'</code>. Offline mode will work.');
+      }catch(e){
+        add('FAIL','Service worker failed to register', String(e.message||e));
+      }
+    }catch(e){
+      add('FAIL','sw.js NOT found','Could not load <code>sw.js</code> ('+e.message+'). Upload it to the same folder as <code>index.html</code>.');
+    }
+  }
+
+  /* 6 — index.html reachable */
+  try{
+    const r = await fetch('index.html', {cache:'no-store'});
+    if(r.ok) add('PASS','index.html found','The app itself is at <code>'+new URL('./', location.href).href+'</code>');
+    else add('FAIL','index.html not found here','HTTP '+r.status+'. The app page is not in this folder.');
+  }catch(e){ add('FAIL','index.html not reachable', String(e.message||e)); }
+
+  /* 7 — wait for the browser's install offer */
+  const supportsPrompt = 'onbeforeinstallprompt' in window;
+  if(supportsPrompt && !window.matchMedia('(display-mode: standalone)').matches){
+    add('INFO','Waiting for the browser\u2019s install offer…','Give it up to 10 seconds. If everything above passed, a maroon <b>Install</b> button will appear at the top of this page.');
+    let fired = false;
+    window.addEventListener('beforeinstallprompt',(e)=>{
+      e.preventDefault(); fired = true;
+      const btn = document.getElementById('installBtn');
+      btn.style.display = 'inline-block';
+      btn.onclick = async ()=>{ e.prompt(); await e.userChoice; btn.style.display='none'; };
+      add('PASS','Browser confirms: the app IS installable','Click the maroon button at the top of this page to install it right now. The button on index.html will work too.');
+      finish();
+    });
+    setTimeout(()=>{ if(!fired){
+      add('WARN','Browser did not offer installation within 10s',
+        'If all checks above are PASS: reload this page once (Ctrl+Shift+R) — on the very first visit Chrome sometimes decides installability only after the service worker is in place. If it still fails, check <b>F12 → Application → Manifest</b> for a red error and report it.');
+      finish();
+    } }, 10000);
+  } else { finish(); }
+
+  function finish(){
+    if(fails.length){
+      verdict.innerHTML = '<b>Fix these first:</b> ' + fails.join(' · ') + '.<br>Correct the FAIL items above, reload this page, and the install option should appear.';
+    } else if(document.getElementById('installBtn').style.display==='inline-block'){
+      verdict.innerHTML = '<b>Everything works.</b> Use the maroon Install button above.';
+    } else if(warns.length){
+      verdict.innerHTML = '<b>Setup looks correct.</b> Note the WARN items — on this browser/device the install route is different (see the advice next to each).';
+    } else {
+      verdict.innerHTML = '<b>All checks passed.</b> Reload once with Ctrl+Shift+R if the install button hasn\u2019t appeared yet.';
+    }
+  }
+}
+run();
+</script>
+</body>
+</html>
