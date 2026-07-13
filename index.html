@@ -142,6 +142,11 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
 .x{background:none; border:none; font-size:1.4rem; color:var(--muted); line-height:1}
 .hidden{display:none !important}
 
+/* ---------- credit ---------- */
+.credit{max-width:1280px; margin:40px auto 0; padding:18px 28px; border-top:1px solid var(--line); text-align:center; font-size:.86rem; color:var(--muted)}
+.credit strong{font-family:'Fraunces',Georgia,serif; font-size:.98rem; color:var(--ink); letter-spacing:.01em}
+.credit-sub{display:block; font-size:.74rem; letter-spacing:.06em; text-transform:uppercase; margin-top:3px}
+
 @media (max-width:980px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .casebar{grid-template-columns:1fr}
@@ -235,6 +240,11 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
   <div id="viewAlt" class="hidden"></div>
 
 </div>
+
+<footer class="credit">
+  Conceived &amp; developed by <strong>Radhakrishnan Dharmarajan</strong>
+  <span class="credit-sub">Claims verification &amp; tracking under the Insolvency and Bankruptcy Code, 2016</span>
+</footer>
 
 <!-- ---------- modal ---------- -->
 <div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
@@ -711,6 +721,7 @@ function exportExcel(){
     alert('The Excel library could not be loaded. Please check your internet connection and try again.');
     return;
   }
+  const CREDIT = 'Prepared using Claims Register — conceived & developed by Radhakrishnan Dharmarajan';
   const cd = $('cdName').value || 'Corporate Debtor';
   const procName = process_==='CIRP' ? 'Corporate Insolvency Resolution Process (CIRP)' : 'Liquidation Process';
   const icd = $('icd').value || '';
@@ -731,7 +742,9 @@ function exportExcel(){
     [procName + (icd? ' — Commencement date: '+icd : '')],
     ['Claim register as on ' + new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})],
     [],
-    head, ...regRows
+    head, ...regRows,
+    [],
+    [CREDIT]
   ];
   const wsReg = XLSX.utils.aoa_to_sheet(regAoa);
   wsReg['!cols'] = [{wch:7},{wch:38},{wch:28},{wch:16},{wch:14},{wch:18},{wch:18},{wch:18},{wch:11},{wch:30},{wch:48},{wch:28},{wch:16},{wch:14},{wch:24},{wch:55}];
@@ -765,7 +778,9 @@ function exportExcel(){
     [],
     ['Class-wise position'],
     ['Category','Claims','Admitted / Partly','Claimed (INR)','Admitted (INR)'],
-    ...classRows
+    ...classRows,
+    [],
+    [CREDIT]
   ];
   const wsSum = XLSX.utils.aoa_to_sheet(sumAoa);
   wsSum['!cols'] = [{wch:38},{wch:14},{wch:18},{wch:18},{wch:18}];
@@ -777,7 +792,9 @@ function exportExcel(){
     const secAoa = [
       [cd + ' — Security interests offered by the corporate debtor'],[],
       ['Sl. No.','Secured Creditor','Nature of Security','Assets of CD Covered','Charge Registration','Date of Creation','Ranking','Section 52 Election','Claim Status'],
-      ...secured.map((c,i)=>[i+1, c.name, (c.secTypes||[]).join('; '), c.asset, c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.status])
+      ...secured.map((c,i)=>[i+1, c.name, (c.secTypes||[]).join('; '), c.asset, c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.status]),
+      [],
+      [CREDIT]
     ];
     const wsSec = XLSX.utils.aoa_to_sheet(secAoa);
     wsSec['!cols'] = [{wch:7},{wch:38},{wch:32},{wch:52},{wch:28},{wch:16},{wch:14},{wch:24},{wch:18}];
@@ -806,6 +823,7 @@ function exportExcel(){
       g.forEach(c=> wfAoa.push([t, TIER_NAMES[t], c.name, numOr(c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)]));
       wfAoa.push(['', '', 'Tier total', g.reduce((a,c)=>a+Number((c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)||0),0)]);
     }
+    wfAoa.push([], [CREDIT]);
     const wsWf = XLSX.utils.aoa_to_sheet(wfAoa);
     wsWf['!cols'] = [{wch:9},{wch:70},{wch:44},{wch:26}];
     XLSX.utils.book_append_sheet(wb, wsWf, 'Section 53 Waterfall');

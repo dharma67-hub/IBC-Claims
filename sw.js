@@ -1,7 +1,7 @@
 /* Service worker — IBC Claims Register PWA
    Precaches the app shell so everything works offline,
    and runtime-caches anything else fetched (e.g. Google Fonts). */
-const CACHE = 'ibc-claims-v1';
+const CACHE = 'ibc-claims-v3';
 const CORE = [
   './',
   './index.html',
