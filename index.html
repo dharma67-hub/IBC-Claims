@@ -142,6 +142,10 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
 .x{background:none; border:none; font-size:1.4rem; color:var(--muted); line-height:1}
 .hidden{display:none !important}
 
+/* ---------- sample banner ---------- */
+.samplenote{margin-top:16px; background:var(--warn-tint); border:1px solid #E4D2A8; border-left:5px solid var(--warn); border-radius:var(--radius); padding:10px 14px; font-size:.86rem; color:#5E4A1A}
+.samplenote strong{color:var(--warn)}
+
 /* ---------- credit ---------- */
 .credit{max-width:1280px; margin:40px auto 0; padding:18px 28px; border-top:1px solid var(--line); text-align:center; font-size:.86rem; color:var(--muted)}
 .credit strong{font-family:'Fraunces',Georgia,serif; font-size:.98rem; color:var(--ink); letter-spacing:.01em}
@@ -180,11 +184,11 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
   <section class="casebar">
     <div>
       <label for="cdName">Corporate debtor</label>
-      <input id="cdName" value="Suryadeep Textiles Private Limited" onchange="render()">
+      <input id="cdName" value="" placeholder="Name of the corporate debtor" onchange="render()">
     </div>
     <div>
       <label for="icd" id="icdLabel">Insolvency commencement date</label>
-      <input type="date" id="icd" value="2026-05-04" onchange="render()">
+      <input type="date" id="icd" value="" onchange="render()">
     </div>
     <div class="deadline" id="deadlineBox"></div>
   </section>
@@ -210,6 +214,10 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
     <button class="btn primary" onclick="openModal()">+ Add claim</button>
   </div>
 
+  <div id="sampleNote" class="samplenote hidden">
+    <strong>Fictitious sample data</strong> — for demonstration only. All entities, claims and amounts shown are invented and do not relate to any real corporate debtor, creditor or case. Use <em>Reset case</em> to clear it before entering real data.
+  </div>
+
   <div class="tabs">
     <button id="tabReg" class="active" onclick="setTab('reg')">Claim register</button>
     <button id="tabAlt" onclick="setTab('alt')">Class summary</button>
@@ -231,9 +239,9 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
       <tbody id="tbody"></tbody>
     </table>
     <div id="emptyReg" class="empty hidden">
-      <h3>No claims match</h3>
-      <p>Adjust the filters, or add a claim to the register.</p>
-      <p style="margin-top:10px"><button class="btn small" onclick="loadSample()">Load sample data</button></p>
+      <h3>The register is empty</h3>
+      <p>Add your first claim to begin — or adjust the filters if claims exist.</p>
+      <p style="margin-top:10px"><button class="btn small" onclick="loadSample()">Load fictitious sample data (demo only)</button></p>
     </div>
   </div>
 
@@ -283,7 +291,7 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
         </div>
         <div class="field">
           <label for="mAsset">Asset(s) of the corporate debtor covered</label>
-          <textarea id="mAsset" rows="2" placeholder="e.g. Factory land &amp; building at Plot 12, MIDC Bhosari, Pune; entire current assets (stock &amp; book debts)"></textarea>
+          <textarea id="mAsset" rows="2" placeholder="e.g. Factory land &amp; building at Plot 12, Udyog Nagar Industrial Estate; entire current assets (stock &amp; book debts)"></textarea>
         </div>
         <div class="grid3">
           <div class="field"><label for="mChargeId">Charge registration (CERSAI / RoC ID)</label><input id="mChargeId" placeholder="e.g. RoC Charge ID 100456789"></div>
@@ -301,7 +309,7 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
             </select>
             <div class="hint">Proof of security per Reg. 21 — IU records, CERSAI or RoC charge registry.</div>
           </div>
-          <div class="field"><label for="mSecVal">Indicative value, if noted (₹, optional)</label><input type="number" min="0" id="mSecVal"></div>
+          <div class="field"><label for="mSecVal">Value of security interest (₹)</label><input type="number" min="0" id="mSecVal"><div class="hint" id="secValHint">In liquidation, required — the debt beyond this value is treated as unsecured (s. 53(1)(b) Explanation, Amendment Act 2026; value per Reg. 35 liquidation valuation).</div></div>
         </div>
       </fieldset>
 
@@ -364,25 +372,27 @@ function formsFor(cat){
   return (process_==='CIRP'? cirp: liq)[cat] || ['Form F'];
 }
 
-/* sample data — replace with your own */
-let claims = [
-  {id:1, name:'State Bank of India', cat:'Financial Creditor — Secured', form:'Form C', date:'2026-05-12',
+/* Fictitious sample data for demonstration only — loaded on request.
+   All names of the corporate debtor, creditors and authorities are invented
+   and do not relate to any real case, entity or person. */
+const SAMPLE_DATA = [
+  {id:1, name:'XYZ Bank Ltd.', cat:'Financial Creditor — Secured', form:'Form C', date:'2026-05-12',
    claimed:184500000, admitted:182300000, status:'Admitted', secured:true,
-   secTypes:['Mortgage','Hypothecation'], asset:'Equitable mortgage over factory land & building, Plot 12, MIDC Bhosari, Pune; first charge by hypothecation over entire current assets',
-   chargeId:'RoC Charge ID 100482731', chargeDate:'2019-08-14', rank:'First charge', s52:'relinquish', secVal:'',
-   remarks:'Verified against IU record (NeSL) and sanction letter dated 02.08.2019; penal interest post-ICD excluded.'},
-  {id:2, name:'Canara Bank', cat:'Financial Creditor — Secured', form:'Form C', date:'2026-05-15',
+   secTypes:['Mortgage','Hypothecation'], asset:'Equitable mortgage over factory land & building, Plot 12, Udyog Nagar Industrial Estate; first charge by hypothecation over entire current assets',
+   chargeId:'RoC Charge ID 100482731', chargeDate:'2019-08-14', rank:'First charge', s52:'relinquish', secVal:150000000,
+   remarks:'Verified against IU record and sanction letter dated 02.08.2019; penal interest post-ICD excluded.'},
+  {id:2, name:'ABC Bank Ltd.', cat:'Financial Creditor — Secured', form:'Form C', date:'2026-05-15',
    claimed:96200000, admitted:96200000, status:'Admitted', secured:true,
-   secTypes:['Hypothecation','Corporate guarantee'], asset:'Second charge on current assets; hypothecation of plant & machinery (Unit II); corporate guarantee of Suryadeep Yarns Ltd.',
-   chargeId:'CERSAI Asset ID 4002-1187-3345', chargeDate:'2021-01-22', rank:'Second charge', s52:'', secVal:'',
+   secTypes:['Hypothecation','Corporate guarantee'], asset:'Second charge on current assets; hypothecation of plant & machinery (Unit II); corporate guarantee of a group company',
+   chargeId:'CERSAI Asset ID 4002-1187-3345', chargeDate:'2021-01-22', rank:'Second charge', s52:'', secVal:40000000,
    remarks:'Claim verified with statement of account and CERSAI search report.'},
-  {id:3, name:'Meridian Asset Reconstruction Co. Ltd.', cat:'Financial Creditor — Unsecured', form:'Form C', date:'2026-05-20',
+  {id:3, name:'PQR Asset Reconstruction Co. Ltd.', cat:'Financial Creditor — Unsecured', form:'Form C', date:'2026-05-20',
    claimed:41800000, admitted:'', status:'Under Verification', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
    remarks:'Assignment deed from original lender awaited; verification of assignment in progress.'},
-  {id:4, name:'Poornima Cotton Traders', cat:'Operational Creditor', form:'Form B', date:'2026-05-18',
+  {id:4, name:'LMN Cotton Traders', cat:'Operational Creditor', form:'Form B', date:'2026-05-18',
    claimed:7350000, admitted:6900000, status:'Partially Admitted', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
    remarks:'₹4.5 lakh disallowed — debit notes not supported by delivery challans.'},
-  {id:5, name:'Vikram Logistics LLP', cat:'Operational Creditor', form:'Form B', date:'2026-06-02',
+  {id:5, name:'UVW Logistics LLP', cat:'Operational Creditor', form:'Form B', date:'2026-06-02',
    claimed:2140000, admitted:'', status:'Received', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
    remarks:''},
   {id:6, name:'Workmen of Unit I (through authorised representative)', cat:'Workmen', form:'Form E (auth. rep.)', date:'2026-05-25',
@@ -391,25 +401,28 @@ let claims = [
   {id:7, name:'Employees (staff & supervisors)', cat:'Employees', form:'Form D', date:'2026-05-27',
    claimed:5400000, admitted:'', status:'Under Verification', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
    remarks:'Reconciling with full & final settlement records.'},
-  {id:8, name:'Central Goods & Services Tax, Pune-II', cat:'Government dues', form:'Form B', date:'2026-06-05',
+  {id:8, name:'Goods & Services Tax Department (jurisdictional office)', cat:'Government dues', form:'Form B', date:'2026-06-05',
    claimed:9800000, admitted:'', status:'Under Verification', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
-   remarks:'DRC-07 orders under reconciliation with returns filed.'},
-  {id:9, name:'Trident Dyes & Chemicals Pvt. Ltd.', cat:'Operational Creditor', form:'Form B', date:'2026-06-20',
+   remarks:'Demand orders under reconciliation with returns filed.'},
+  {id:9, name:'DEF Dyes & Chemicals Pvt. Ltd.', cat:'Operational Creditor', form:'Form B', date:'2026-06-20',
    claimed:3900000, admitted:0, status:'Rejected', secured:false, secTypes:[], asset:'', chargeId:'', chargeDate:'', rank:'', s52:'', secVal:'',
-   remarks:'Claim pertains to a different entity (Suryadeep Yarns Ltd.); no privity with CD.'}
+   remarks:'Claim pertains to a different group entity; no privity with CD.'}
 ];
+
+/* the register starts blank — your own case data only */
+let claims = [];
+let sampleMode = false;
 
 /* ================= persistence =================
    Saved in this browser/device only. Guarded so the app
    still runs in environments where storage is unavailable
    (e.g. an online preview) — it just won't remember. */
 const STORE_KEY = 'ibc-claims-register-v1';
-const SAMPLE = JSON.parse(JSON.stringify(claims));
 
 function persist(){
   try{
     localStorage.setItem(STORE_KEY, JSON.stringify({
-      process_, claims, nextId,
+      process_, claims, nextId, sampleMode,
       cd: $('cdName').value, icd: $('icd').value
     }));
   }catch(e){ /* storage unavailable — continue without saving */ }
@@ -423,6 +436,7 @@ function restore(){
     if(!Array.isArray(s.claims)) return false;
     claims = s.claims;
     nextId = s.nextId || 100;
+    sampleMode = !!s.sampleMode;
     process_ = s.process_ === 'LIQ' ? 'LIQ' : 'CIRP';
     if(s.cd != null) $('cdName').value = s.cd;
     if(s.icd != null) $('icd').value = s.icd;
@@ -434,6 +448,7 @@ function resetCase(){
   if(!confirm('Reset this case? The corporate debtor details and the entire claim register will be cleared. Export to Excel first if you need a copy.')) return;
   claims = [];
   nextId = 100;
+  sampleMode = false;
   $('cdName').value = '';
   $('icd').value = '';
   try{ localStorage.removeItem(STORE_KEY); }catch(e){}
@@ -441,8 +456,11 @@ function resetCase(){
 }
 
 function loadSample(){
-  claims = JSON.parse(JSON.stringify(SAMPLE));
+  claims = JSON.parse(JSON.stringify(SAMPLE_DATA));
   nextId = 100;
+  sampleMode = true;
+  $('cdName').value = 'XYZ Manufacturing Pvt. Ltd. (fictitious)';
+  $('icd').value = '2026-05-04';
   render();
 }
 
@@ -494,6 +512,7 @@ function setTab(t){
 
 function render(){
   $('deadlineBox').innerHTML = deadlineInfo();
+  $('sampleNote').classList.toggle('hidden', !sampleMode);
   renderStats();
   renderTable();
   renderAlt();
@@ -543,6 +562,7 @@ function securityCell(c){
   if(c.asset) bits.push(esc(c.asset));
   if(c.rank) bits.push(esc(c.rank));
   if(c.chargeId) bits.push(esc(c.chargeId));
+  if(c.secVal!=='' && c.secVal!=null && !isNaN(c.secVal)) bits.push('Security value ₹ '+inr(c.secVal));
   if(process_==='LIQ' && c.s52) bits.push(c.s52==='relinquish' ? 'Relinquished to estate (s. 53)' : 'Realising outside (s. 52)');
   if(bits.length) h += `<div class="cred-sub">${bits.join(' · ')}</div>`;
   return h || '<span class="unsec">Secured (details pending)</span>';
@@ -604,33 +624,53 @@ function tierOf(c){
   return 6; // operational & remaining debts
 }
 
+/* Builds tier→entries applying the s. 53(1)(b) Explanation (Amendment Act, 2026):
+   a relinquishing secured creditor ranks in Priority 2 only to the extent of the
+   value of its security interest; the balance debt is treated as unsecured. */
+function wfEntries(){
+  const map = {1:[],2:[],3:[],4:[],5:[],6:[],7:[],8:[]};
+  claims.filter(c=>c.status!=='Rejected').forEach(c=>{
+    const amt = Number((c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)||0);
+    const t = tierOf(c);
+    const sv = Number(c.secVal);
+    if(t===2 && c.secured && c.secVal!=='' && c.secVal!=null && !isNaN(sv) && sv < amt){
+      map[2].push({name:c.name, amount:sv, note:'to the extent of security value'});
+      const balTier = c.cat==='Financial Creditor — Secured' ? 4 : 6;
+      map[balTier].push({name:c.name, amount:amt-sv, note:'balance treated as unsecured — s. 53(1)(b) Expl.'});
+    } else {
+      map[t].push({name:c.name, amount:amt, note:(t===2 && c.secured && !c.s52)?'s. 52 election pending':''});
+    }
+  });
+  return map;
+}
+
 function waterfallHTML(){
   const TIERS = [
     {n:1, t:'Insolvency resolution & liquidation costs', d:'Paid in full in priority — fees, process costs (s. 53(1)(a)).'},
-    {n:2, t:'Workmen\u2019s dues (24 months) & secured creditors who relinquished security', d:'Rank equally between and among themselves (s. 53(1)(b)).'},
+    {n:2, t:'Workmen\u2019s dues (24 months) & secured creditors who relinquished security', d:'Rank equally; secured creditors to the extent of the value of their security interest (s. 53(1)(b) & Explanation).'},
     {n:3, t:'Wages & unpaid dues of employees (12 months)', d:'s. 53(1)(c)'},
-    {n:4, t:'Financial debts owed to unsecured creditors', d:'s. 53(1)(d)'},
+    {n:4, t:'Financial debts owed to unsecured creditors', d:'Includes the balance debt of relinquishing secured financial creditors beyond security value (s. 53(1)(d)).'},
     {n:5, t:'Government dues (2 years) & unpaid secured creditors after s. 52 enforcement', d:'Rank equally (s. 53(1)(e)).'},
     {n:6, t:'Any remaining debts and dues', d:'Includes operational creditors (s. 53(1)(f)).'},
     {n:7, t:'Preference shareholders', d:'s. 53(1)(g)'},
     {n:8, t:'Equity shareholders or partners', d:'s. 53(1)(h)'}
   ];
+  const map = wfEntries();
   const html = TIERS.map((T,i)=>{
-    const g = claims.filter(c=>tierOf(c)===T.n && c.status!=='Rejected');
-    const admitted = g.reduce((a,c)=>a+Number(c.admitted||0),0);
-    const claimed = g.reduce((a,c)=>a+Number(c.claimed||0),0);
-    const items = g.map(c=>`<li><span>${esc(c.name)} <span class="cred-sub" style="display:inline">${c.secured&&!c.s52?'(s. 52 election pending)':''}</span></span><span class="mono">₹ ${inr(c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)}</span></li>`).join('');
+    const g = map[T.n];
+    const total = g.reduce((a,e)=>a+e.amount,0);
+    const items = g.map(e=>`<li><span>${esc(e.name)}${e.note? ' <span class="cred-sub" style="display:inline">('+e.note+')</span>':''}</span><span class="mono">₹ ${inr(e.amount)}</span></li>`).join('');
     const body = T.n===1
       ? '<div class="none">Process costs are tracked outside the claim register.</div>'
       : (items? `<ul>${items}</ul>` : '<div class="none">No admitted claims in this tier.</div>');
     return `<div class="tier" style="margin-left:${Math.min(i*22,154)}px">
       <div class="tier-head">
         <h3><span class="rank">PRIORITY ${T.n}</span>${T.t}</h3>
-        <div class="tier-amt">₹ ${inr(admitted)} <span>admitted · ₹ ${inr(claimed)} claimed</span></div>
+        <div class="tier-amt">₹ ${inr(total)} <span>for distribution</span></div>
       </div>
       <div class="cred-sub">${T.d}</div>${body}</div>`;
   }).join('');
-  return `<div class="wf"><p class="wf-note">Distribution priority under Section 53 of the Code. Rejected claims are excluded; secured creditors default to Priority 2 until a Section 52 election is recorded on the claim.</p>${html}</div>`;
+  return `<div class="wf"><p class="wf-note">Distribution priority under Section 53. Where a security value is recorded, a relinquishing secured creditor ranks in Priority 2 only to that extent and the balance is treated as unsecured (s. 53(1)(b) Explanation, Amendment Act 2026). Rejected claims excluded; secured creditors default to Priority 2 until a Section 52 election is recorded.</p>${html}</div>`;
 }
 
 /* ================= modal ================= */
@@ -685,6 +725,9 @@ function saveClaim(){
   const claimed = $('mClaimed').value;
   if(!name){ alert('Enter the creditor / stakeholder name.'); return; }
   if(claimed==='' || Number(claimed)<0){ alert('Enter the amount claimed.'); return; }
+  if(process_==='LIQ' && $('mSecured').checked && $('mSecVal').value===''){
+    if(!confirm('Value of security interest is blank. In liquidation, the security value determines the secured/unsecured split of the claim under s. 53(1)(b) Explanation. Save without it?')) return;
+  }
   const rec = {
     id: editId ?? nextId++,
     name, cat: $('mCat').value, form: $('mForm').value, date: $('mDate').value,
@@ -698,7 +741,7 @@ function saveClaim(){
     chargeDate: $('mChargeDate').value,
     rank: $('mSecured').checked ? $('mRank').value : '',
     s52: $('mSecured').checked ? $('mS52').value : '',
-    secVal: $('mSecVal').value,
+    secVal: $('mSecured').checked && $('mSecVal').value!=='' ? Number($('mSecVal').value) : '',
     remarks: $('mRemarks').value.trim()
   };
   if(editId){ claims = claims.map(c=>c.id===editId? rec: c); } else { claims.push(rec); }
@@ -730,12 +773,12 @@ function exportExcel(){
   /* ---- Sheet 1: Claim Register ---- */
   const head = ['Sl. No.','Creditor / Stakeholder','Category','Claim Form','Date of Receipt','Verification Status',
     'Amount Claimed (INR)','Amount Admitted (INR)','Secured (Y/N)','Nature of Security',
-    'Assets of CD Covered','Charge Registration (CERSAI / RoC)','Date of Charge Creation','Ranking',
+    'Assets of CD Covered','Value of Security Interest (INR)','Charge Registration (CERSAI / RoC)','Date of Charge Creation','Ranking',
     'Section 52 Election','Remarks / Basis of Verification'];
   const regRows = claims.map((c,i)=>[
     i+1, c.name, c.cat, c.form, c.date, c.status,
     numOr(c.claimed), numOr(c.admitted), c.secured?'Yes':'No', (c.secTypes||[]).join('; '),
-    c.asset, c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.remarks
+    c.asset, numOr(c.secVal), c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.remarks
   ]);
   const regAoa = [
     [cd],
@@ -747,7 +790,7 @@ function exportExcel(){
     [CREDIT]
   ];
   const wsReg = XLSX.utils.aoa_to_sheet(regAoa);
-  wsReg['!cols'] = [{wch:7},{wch:38},{wch:28},{wch:16},{wch:14},{wch:18},{wch:18},{wch:18},{wch:11},{wch:30},{wch:48},{wch:28},{wch:16},{wch:14},{wch:24},{wch:55}];
+  wsReg['!cols'] = [{wch:7},{wch:38},{wch:28},{wch:16},{wch:14},{wch:18},{wch:18},{wch:18},{wch:11},{wch:30},{wch:48},{wch:22},{wch:28},{wch:16},{wch:14},{wch:24},{wch:55}];
   wsReg['!freeze'] = {xSplit:0, ySplit:5};
   XLSX.utils.book_append_sheet(wb, wsReg, 'Claim Register');
 
@@ -791,13 +834,13 @@ function exportExcel(){
   if(secured.length){
     const secAoa = [
       [cd + ' — Security interests offered by the corporate debtor'],[],
-      ['Sl. No.','Secured Creditor','Nature of Security','Assets of CD Covered','Charge Registration','Date of Creation','Ranking','Section 52 Election','Claim Status'],
-      ...secured.map((c,i)=>[i+1, c.name, (c.secTypes||[]).join('; '), c.asset, c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.status]),
+      ['Sl. No.','Secured Creditor','Nature of Security','Assets of CD Covered','Value of Security Interest (INR)','Charge Registration','Date of Creation','Ranking','Section 52 Election','Claim Status'],
+      ...secured.map((c,i)=>[i+1, c.name, (c.secTypes||[]).join('; '), c.asset, numOr(c.secVal), c.chargeId, c.chargeDate, c.rank, s52Label(c.s52), c.status]),
       [],
       [CREDIT]
     ];
     const wsSec = XLSX.utils.aoa_to_sheet(secAoa);
-    wsSec['!cols'] = [{wch:7},{wch:38},{wch:32},{wch:52},{wch:28},{wch:16},{wch:14},{wch:24},{wch:18}];
+    wsSec['!cols'] = [{wch:7},{wch:38},{wch:32},{wch:52},{wch:22},{wch:28},{wch:16},{wch:14},{wch:24},{wch:18}];
     XLSX.utils.book_append_sheet(wb, wsSec, 'Security Interests');
   }
 
@@ -805,7 +848,7 @@ function exportExcel(){
   if(process_==='LIQ'){
     const TIER_NAMES = {
       1:'Insolvency resolution & liquidation costs — s. 53(1)(a)',
-      2:'Workmen\u2019s dues (24 months) & secured creditors relinquishing security — s. 53(1)(b)',
+      2:'Workmen\u2019s dues (24 months) & secured creditors relinquishing security, to the extent of security value — s. 53(1)(b) & Explanation',
       3:'Wages & unpaid dues of employees (12 months) — s. 53(1)(c)',
       4:'Financial debts owed to unsecured creditors — s. 53(1)(d)',
       5:'Government dues (2 years) & unpaid secured creditors after s. 52 — s. 53(1)(e)',
@@ -814,14 +857,15 @@ function exportExcel(){
       8:'Equity shareholders or partners — s. 53(1)(h)'
     };
     const wfAoa = [[cd + ' — Distribution priority under Section 53'],
-      ['Note: rejected claims excluded; secured creditors default to Priority 2 until a Section 52 election is recorded.'],[],
+      ['Note: rejected claims excluded; secured creditors default to Priority 2 until a Section 52 election is recorded. Where a security value is recorded, a relinquishing secured creditor ranks in Priority 2 to that extent and the balance is treated as unsecured (s. 53(1)(b) Explanation, Amendment Act 2026).'],[],
       ['Priority','Tier','Creditor / Stakeholder','Amount for Distribution (INR)']];
+    const map = wfEntries();
     for(let t=1;t<=8;t++){
-      const g = claims.filter(c=>tierOf(c)===t && c.status!=='Rejected');
+      const g = map[t];
       if(t===1){ wfAoa.push([1, TIER_NAMES[1], 'Process costs — tracked outside the claim register', '']); continue; }
       if(!g.length){ wfAoa.push([t, TIER_NAMES[t], '— none —', '']); continue; }
-      g.forEach(c=> wfAoa.push([t, TIER_NAMES[t], c.name, numOr(c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)]));
-      wfAoa.push(['', '', 'Tier total', g.reduce((a,c)=>a+Number((c.admitted!==''&&c.admitted!=null? c.admitted : c.claimed)||0),0)]);
+      g.forEach(e=> wfAoa.push([t, TIER_NAMES[t], e.name + (e.note? ' ('+e.note+')':''), e.amount]));
+      wfAoa.push(['', '', 'Tier total', g.reduce((a,e)=>a+e.amount,0)]);
     }
     wfAoa.push([], [CREDIT]);
     const wsWf = XLSX.utils.aoa_to_sheet(wfAoa);
