@@ -146,6 +146,11 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
 .samplenote{margin-top:16px; background:var(--warn-tint); border:1px solid #E4D2A8; border-left:5px solid var(--warn); border-radius:var(--radius); padding:10px 14px; font-size:.86rem; color:#5E4A1A}
 .samplenote strong{color:var(--warn)}
 
+/* ---------- security value emphasis ---------- */
+.secval-field{background:var(--seal-tint); border:1px solid #E3CBCB; border-radius:var(--radius); padding:10px 12px}
+.secval-field label{color:var(--seal-dark)}
+.secval-field .req{color:var(--bad)}
+
 /* ---------- credit ---------- */
 .credit{max-width:1280px; margin:40px auto 0; padding:18px 28px; border-top:1px solid var(--line); text-align:center; font-size:.86rem; color:var(--muted)}
 .credit strong{font-family:'Fraunces',Georgia,serif; font-size:.98rem; color:var(--ink); letter-spacing:.01em}
@@ -293,6 +298,11 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
           <label for="mAsset">Asset(s) of the corporate debtor covered</label>
           <textarea id="mAsset" rows="2" placeholder="e.g. Factory land &amp; building at Plot 12, Udyog Nagar Industrial Estate; entire current assets (stock &amp; book debts)"></textarea>
         </div>
+        <div class="field secval-field">
+          <label for="mSecVal" id="secValLabel">Value of security interest (₹)</label>
+          <input type="number" min="0" id="mSecVal" placeholder="e.g. 15000000">
+          <div class="hint" id="secValHint">The debt beyond this value is treated as unsecured in liquidation (s. 53(1)(b) Explanation, Amendment Act 2026; value per Reg. 35 liquidation valuation).</div>
+        </div>
         <div class="grid3">
           <div class="field"><label for="mChargeId">Charge registration (CERSAI / RoC ID)</label><input id="mChargeId" placeholder="e.g. RoC Charge ID 100456789"></div>
           <div class="field"><label for="mChargeDate">Date of creation</label><input type="date" id="mChargeDate"></div>
@@ -309,7 +319,6 @@ fieldset.security legend{font-family:'Fraunces',serif; font-weight:600; font-siz
             </select>
             <div class="hint">Proof of security per Reg. 21 — IU records, CERSAI or RoC charge registry.</div>
           </div>
-          <div class="field"><label for="mSecVal">Value of security interest (₹)</label><input type="number" min="0" id="mSecVal"><div class="hint" id="secValHint">In liquidation, required — the debt beyond this value is treated as unsecured (s. 53(1)(b) Explanation, Amendment Act 2026; value per Reg. 35 liquidation valuation).</div></div>
         </div>
       </fieldset>
 
@@ -714,6 +723,9 @@ function openModal(id){
   $('mSecVal').value = c?.secVal??'';
   $('mRemarks').value = c?.remarks||'';
   $('s52Field').classList.toggle('hidden', process_==='CIRP');
+  $('secValLabel').innerHTML = process_==='LIQ'
+    ? 'Value of security interest (₹) <span class="req">— required in liquidation</span>'
+    : 'Value of security interest (₹, optional in CIRP)';
   $('overlay').classList.add('show');
   $('mName').focus();
 }
